@@ -47,7 +47,8 @@ with aba_inputs:
                     "Obesidade (30%+)"
                 ])
                 mapa_bf_m = {"Atlético": 12.0, "Normal": 17.0, "Sobrepeso Leve": 22.0, "Sobrepeso Moderado": 27.0, "Obesidade": 32.0}
-                bf = mapa_bf_m[categoria_bf.split(" /")[0]]
+                chave_bf = categoria_bf.split(" /")[0].split(" (")[0]
+                bf = mapa_bf_m[chave_bf]
             else:
                 categoria_bf = st.selectbox("Selecione seu perfil visual atual:", [
                     "Atlética / Alta definição (18% - 22%)",
@@ -57,7 +58,8 @@ with aba_inputs:
                     "Obesidade (38%+)"
                 ])
                 mapa_bf_f = {"Atlética": 20.0, "Normal": 25.0, "Sobrepeso Leve": 30.0, "Sobrepeso Moderado": 35.0, "Obesidade": 40.0}
-                bf = mapa_bf_f[categoria_bf.split(" /")[0]]
+                chave_bf = categoria_bf.split(" /")[0].split(" (")[0]
+                bf = mapa_bf_f[chave_bf]
 
         # ==========================================
         # 2. PARÂMETROS METABÓLICOS
@@ -144,8 +146,8 @@ with aba_inputs:
         # ==========================================
         # 4. CONTROLES DE PROJEÇÃO
         # ==========================================
-        st.subheader("4. Controles da Projeção")
-        semanas_projecao = st.slider("Semanas de Análise", min_value=4, max_value=24, value=12, step=1)
+        # st.subheader("4. Controles da Projeção")
+        # semanas_projecao = st.slider("Semanas de Análise", min_value=4, max_value=24, value=12, step=1)
 
 with aba_resultados:
     if peso is None or altura is None or idade is None:
@@ -228,6 +230,10 @@ with aba_resultados:
         st.markdown("---")
         
         # PROJEÇÃO RECURSIVA
+
+        st.subheader("Controle da Projeção")
+        semanas_projecao = st.slider("Semanas de Análise", min_value=4, max_value=24, value=12, step=1)
+
         semanas = list(range(semanas_projecao + 1))
         pesos_totais = [peso]
         massas_magras = [massa_magra_inicial] if bf is not None else None
