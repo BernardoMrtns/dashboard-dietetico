@@ -228,129 +228,129 @@ with aba_resultados:
         st.markdown("---")
         
         # PROJEÇÃO RECURSIVA
+        semanas = list(range(semanas_projecao + 1))
+        pesos_totais = [peso]
+        massas_magras = [massa_magra_inicial] if bf is not None else None
+        massas_gordas = [massa_gorda_inicial] if bf is not None else None
+        bfs = [bf] if bf is not None else None
+        mm_atual = massa_magra_inicial if bf is not None else None
+        mg_atual = massa_gorda_inicial if bf is not None else None
+        peso_atual = peso
+
         if (objetivo == "Cutting (Perda de Gordura)" and balanco_calorico_inicial < 0) or \
            (objetivo == "Bulking (Ganho de Massa)" and balanco_calorico_inicial > 0):
-            
-            semanas = list(range(semanas_projecao + 1))
-            pesos_totais = [peso]
-            
-            if bf is not None:
-                massas_magras = [massa_magra_inicial]
-                massas_gordas = [massa_gorda_inicial]
-                bfs = [bf]
-                mm_atual = massa_magra_inicial
-                mg_atual = massa_gorda_inicial
-                
-            peso_atual = peso
-            
-            for s in range(1, semanas_projecao + 1):
-                
-                if formula == "Harris Benedict":
-                    bmr_atual = 66 + (13.8 * peso_atual) + (5.0 * altura) - (6.8 * idade) if sexo == "Masculino" else 655 + (9.6 * peso_atual) + (1.9 * altura) - (4.7 * idade)
-                elif formula == "Mifflin-ST":
-                    bmr_atual = (10 * peso_atual) + (6.25 * altura) - (5.0 * idade) + 5 if sexo == "Masculino" else (10 * peso_atual) + (6.25 * altura) - (5.0 * idade) - 161
-                elif formula == "Tinsley (P)":
-                    bmr_atual = (24.8 * peso_atual) + 10
-                elif bf is not None and formula == "Cunningham (MLG)":
-                    bmr_atual = (22 * mm_atual) + 500
-                elif bf is not None and formula == "Tinsley (MLG)":
-                    bmr_atual = (25.9 * mm_atual) + 284
-                
-                tdee_atual = bmr_atual * fator_val
-                balanco_atual = ingestao_diaria - tdee_atual
-                
-                if objetivo == "Cutting (Perda de Gordura)":
-                    if balanco_atual >= 0:
-                        peso_perdido = 0
-                        preservacao_magra = 1.0
-                    else:
-                        peso_perdido = (abs(balanco_atual) * 7) / 7700
-                        prot_kg_atual = proteina / peso_atual
-                        perda_perc_atual = (peso_perdido / peso_atual) * 100
-                        
-                        preservacao_magra = 1.0 
-                        if prot_kg_atual < 1.5: preservacao_magra = 0.70 
-                        elif prot_kg_atual < 2.0: preservacao_magra = 0.95
-                        if perda_perc_atual > 1.0: preservacao_magra = min(preservacao_magra, 0.60)
-                    
-                    peso_atual -= peso_perdido
-                    
-                    if bf is not None:
-                        gordura_alterada = - (peso_perdido * preservacao_magra)
-                        magra_alterada = - (peso_perdido * (1 - preservacao_magra))
-                        mg_atual = max(0, mg_atual + gordura_alterada)
-                        mm_atual = max(0, mm_atual + magra_alterada)
-                        
-                else: # Bulking
-                    if balanco_atual <= 0:
-                        peso_ganho = 0
-                        proporcao_magra = 0.50
-                    else:
-                        peso_ganho = (balanco_atual * 7) / 7700
-                        prot_kg_atual = proteina / peso_atual
-                        ganho_perc_atual = (peso_ganho / peso_atual) * 100
-                        
-                        proporcao_magra = 0.50
-                        if prot_kg_atual < 1.6: proporcao_magra = 0.20 
-                        if ganho_perc_atual > 0.5: proporcao_magra = min(proporcao_magra, 0.30)
-                            
-                    peso_atual += peso_ganho
-                    
-                    if bf is not None:
-                        magra_alterada = peso_ganho * proporcao_magra
-                        gordura_alterada = peso_ganho * (1 - proporcao_magra)
-                        mg_atual = max(0, mg_atual + gordura_alterada)
-                        mm_atual = max(0, mm_atual + magra_alterada)
-                
-                pesos_totais.append(peso_atual)
-                
-                if bf is not None:
-                    peso_real = mg_atual + mm_atual
-                    bf_atual = (mg_atual / peso_real) * 100 if peso_real > 0 else 0
-                    massas_magras.append(mm_atual)
-                    massas_gordas.append(mg_atual)
-                    bfs.append(bf_atual)
-            
-            # Gráficos
-            col_g1, col_g2 = st.columns([2, 1])
-            
-            with col_g1:
-                st.markdown("### 📈 Evolução Dinâmica Recursiva")
-                if bf is not None:
-                    df_grafico = pd.DataFrame({'Semanas': semanas, 'Peso Total (kg)': pesos_totais, 'Massa Gorda (kg)': massas_gordas, 'Massa Magra (kg)': massas_magras, 'Body Fat (%)': bfs})
-                    metrica_y = st.selectbox("Escolha a métrica para o Eixo Y:", ['Peso Total (kg)', 'Massa Gorda (kg)', 'Massa Magra (kg)', 'Body Fat (%)'])
-                else:
-                    df_grafico = pd.DataFrame({'Semanas': semanas, 'Peso Total (kg)': pesos_totais})
-                    metrica_y = 'Peso Total (kg)'
-                    st.caption("Métricas avançadas (Massa Magra, Gorda e BF) estão ocultas pois o BF não foi informado.")
-                
-                fig = px.line(df_grafico, x='Semanas', y=metrica_y, markers=True, title=f"Projeção Realista: {metrica_y}")
-                fig.update_traces(line=dict(width=3), marker=dict(size=10))
-                fig.update_layout(xaxis=dict(tickmode='linear', tick0=0, dtick=1))
-                st.plotly_chart(fig, use_container_width=True)
-                
-            with col_g2:
-                st.markdown("### 📊 Distribuição de Macros")
-                labels = ['Proteínas', 'Carboidratos', 'Gorduras']
-                values = [proteina * 4, carboidrato * 4, gordura * 9]
-                cores = ['#EF553B', '#636EFA', '#00CC96']
-                
-                fig_pie = go.Figure(data=[go.Pie(labels=labels, values=values, hole=.4, marker_colors=cores)])
-                fig_pie.update_layout(annotations=[dict(text=f'{ingestao_diaria:.0f} kcal', x=0.5, y=0.5, font_size=16, showarrow=False)])
-                st.plotly_chart(fig_pie, use_container_width=True)
-                
-            if bf is not None:
-                st.markdown("---")
-                st.markdown("### 🧬 Distribuição da Composição Corporal Projetada")
-                df_comp = pd.DataFrame({
-                    'Semana': semanas * 2,
-                    'Peso (kg)': massas_magras + massas_gordas,
-                    'Composição': ['Massa Magra'] * len(semanas) + ['Massa Gorda'] * len(semanas),
-                    'BF (%) Projetado': bfs * 2
-                })
-                
-                fig_comp = px.bar(df_comp, x='Semana', y='Peso (kg)', color='Composição', hover_data={'BF (%) Projetado': ':.1f', 'Semana': False}, color_discrete_map={'Massa Magra': '#2E91E5', 'Massa Gorda': '#E15F99'}, barmode='stack')
-                fig_comp.update_layout(xaxis_title="Semanas", yaxis_title="Peso (kg)", xaxis=dict(tickmode='linear', tick0=0, dtick=1))
-                st.plotly_chart(fig_comp, use_container_width=True)
+            mensagem_objetivo = None
         else:
-            st.warning("⚠️ Incompatibilidade matemática: Ajuste as macros/calorias para refletir seu objetivo (Déficit para Cutting ou Superávit para Bulking).")
+            mensagem_objetivo = "⚠️ Incompatibilidade matemática: Ajuste as macros/calorias para refletir seu objetivo (Déficit para Cutting ou Superávit para Bulking)."
+
+        for s in range(1, semanas_projecao + 1):
+            if formula == "Harris Benedict":
+                bmr_atual = 66 + (13.8 * peso_atual) + (5.0 * altura) - (6.8 * idade) if sexo == "Masculino" else 655 + (9.6 * peso_atual) + (1.9 * altura) - (4.7 * idade)
+            elif formula == "Mifflin-ST":
+                bmr_atual = (10 * peso_atual) + (6.25 * altura) - (5.0 * idade) + 5 if sexo == "Masculino" else (10 * peso_atual) + (6.25 * altura) - (5.0 * idade) - 161
+            elif formula == "Tinsley (P)":
+                bmr_atual = (24.8 * peso_atual) + 10
+            elif bf is not None and formula == "Cunningham (MLG)":
+                bmr_atual = (22 * mm_atual) + 500
+            elif bf is not None and formula == "Tinsley (MLG)":
+                bmr_atual = (25.9 * mm_atual) + 284
+
+            tdee_atual = bmr_atual * fator_val
+            balanco_atual = ingestao_diaria - tdee_atual
+
+            if objetivo == "Cutting (Perda de Gordura)":
+                if balanco_atual >= 0:
+                    peso_perdido = 0
+                    preservacao_magra = 1.0
+                else:
+                    peso_perdido = (abs(balanco_atual) * 7) / 7700
+                    prot_kg_atual = proteina / peso_atual
+                    perda_perc_atual = (peso_perdido / peso_atual) * 100
+
+                    preservacao_magra = 1.0
+                    if prot_kg_atual < 1.5: preservacao_magra = 0.70
+                    elif prot_kg_atual < 2.0: preservacao_magra = 0.95
+                    if perda_perc_atual > 1.0: preservacao_magra = min(preservacao_magra, 0.60)
+
+                peso_atual -= peso_perdido
+
+                if bf is not None:
+                    gordura_alterada = -(peso_perdido * preservacao_magra)
+                    magra_alterada = -(peso_perdido * (1 - preservacao_magra))
+                    mg_atual = max(0, mg_atual + gordura_alterada)
+                    mm_atual = max(0, mm_atual + magra_alterada)
+
+            else: # Bulking
+                if balanco_atual <= 0:
+                    peso_ganho = 0
+                    proporcao_magra = 0.50
+                else:
+                    peso_ganho = (balanco_atual * 7) / 7700
+                    prot_kg_atual = proteina / peso_atual
+                    ganho_perc_atual = (peso_ganho / peso_atual) * 100
+
+                    proporcao_magra = 0.50
+                    if prot_kg_atual < 1.6: proporcao_magra = 0.20
+                    if ganho_perc_atual > 0.5: proporcao_magra = min(proporcao_magra, 0.30)
+
+                peso_atual += peso_ganho
+
+                if bf is not None:
+                    magra_alterada = peso_ganho * proporcao_magra
+                    gordura_alterada = peso_ganho * (1 - proporcao_magra)
+                    mg_atual = max(0, mg_atual + gordura_alterada)
+                    mm_atual = max(0, mm_atual + magra_alterada)
+
+            pesos_totais.append(peso_atual)
+
+            if bf is not None:
+                peso_real = mg_atual + mm_atual
+                bf_atual = (mg_atual / peso_real) * 100 if peso_real > 0 else 0
+                massas_magras.append(mm_atual)
+                massas_gordas.append(mg_atual)
+                bfs.append(bf_atual)
+
+        if mensagem_objetivo:
+            st.warning(mensagem_objetivo)
+
+        # Gráficos
+        col_g1, col_g2 = st.columns([2, 1])
+
+        with col_g1:
+            st.markdown("### 📈 Evolução Dinâmica Recursiva")
+            if bf is not None:
+                df_grafico = pd.DataFrame({'Semanas': semanas, 'Peso Total (kg)': pesos_totais, 'Massa Gorda (kg)': massas_gordas, 'Massa Magra (kg)': massas_magras, 'Body Fat (%)': bfs})
+                metrica_y = st.selectbox("Escolha a métrica para o Eixo Y:", ['Peso Total (kg)', 'Massa Gorda (kg)', 'Massa Magra (kg)', 'Body Fat (%)'])
+            else:
+                df_grafico = pd.DataFrame({'Semanas': semanas, 'Peso Total (kg)': pesos_totais})
+                metrica_y = 'Peso Total (kg)'
+                st.caption("Métricas avançadas (Massa Magra, Gorda e BF) estão ocultas porque o BF não foi informado.")
+
+            fig = px.line(df_grafico, x='Semanas', y=metrica_y, markers=True, title=f"Projeção Realista: {metrica_y}")
+            fig.update_traces(line=dict(width=3), marker=dict(size=10))
+            fig.update_layout(xaxis=dict(tickmode='linear', tick0=0, dtick=1))
+            st.plotly_chart(fig, use_container_width=True)
+
+        with col_g2:
+            st.markdown("### 📊 Distribuição de Macros")
+            labels = ['Proteínas', 'Carboidratos', 'Gorduras']
+            values = [proteina * 4, carboidrato * 4, gordura * 9]
+            cores = ['#EF553B', '#636EFA', '#00CC96']
+
+            fig_pie = go.Figure(data=[go.Pie(labels=labels, values=values, hole=.4, marker_colors=cores)])
+            fig_pie.update_layout(annotations=[dict(text=f'{ingestao_diaria:.0f} kcal', x=0.5, y=0.5, font_size=16, showarrow=False)])
+            st.plotly_chart(fig_pie, use_container_width=True)
+
+        if bf is not None:
+            st.markdown("---")
+            st.markdown("### 🧬 Distribuição da Composição Corporal Projetada")
+            df_comp = pd.DataFrame({
+                'Semana': semanas * 2,
+                'Peso (kg)': massas_magras + massas_gordas,
+                'Composição': ['Massa Magra'] * len(semanas) + ['Massa Gorda'] * len(semanas),
+                'BF (%) Projetado': bfs * 2
+            })
+
+            fig_comp = px.bar(df_comp, x='Semana', y='Peso (kg)', color='Composição', hover_data={'BF (%) Projetado': ':.1f', 'Semana': False}, color_discrete_map={'Massa Magra': '#2E91E5', 'Massa Gorda': '#E15F99'}, barmode='stack')
+            fig_comp.update_layout(xaxis_title="Semanas", yaxis_title="Peso (kg)", xaxis=dict(tickmode='linear', tick0=0, dtick=1))
+            st.plotly_chart(fig_comp, use_container_width=True)
